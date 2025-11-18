@@ -1,0 +1,40 @@
+{
+  "name": "@windoge98/unhedged_api",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "fastify",
+    "prisma",
+    "typescript",
+    "api"
+  ],
+  "author": "",
+  "license": "ISC",
+  "description": "Fastify API with Prisma and TypeScript",
+  "dependencies": {
+    "@fastify/websocket": "^11.2.0",
+    "@joggr/fastify-prisma": "^6.0.1",
+    "@prisma/client": "^6.19.0",
+    "dotenv": "^17.2.3",
+    "fastify": "^5.6.2",
+    "fastify-plugin": "^5.1.0",
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "pino-pretty": "^13.1.2",
+    "prisma": "^6.19.0",
+    "tsx": "^4.20.6",
+    "typescript": "^5.9.3"
+  }
+}
