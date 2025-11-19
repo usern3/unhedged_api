@@ -4,67 +4,66 @@ const usersRoutes: FastifyPluginAsync = async (fastify) => {
   // Create or get user
   fastify.post<{ Body: { username: string; walletAddress?: string; avatar?: string } }>(
     '/users',
+    {
+      schema: {
+        tags: ['users'],
+        summary: 'Create or get user',
+        description: 'Create a new user or return existing user by username'
+      }
+    },
     async (request, reply) => {
       const { username, walletAddress, avatar } = request.body;
 
-      // Check if user exists
-      const existingUser = await fastify.prisma.user.findUnique({
-        where: { username },
+      const { user, created } = await fastify.userService.createOrGetUser({
+        username,
+        walletAddress,
+        avatar,
       });
 
-      if (existingUser) {
-        return existingUser;
-      }
-
-      // Create new user
-      const user = await fastify.prisma.user.create({
-        data: {
-          username,
-          walletAddress: walletAddress ?? null,
-          avatar: avatar ?? null,
-        },
-      });
-
-      return reply.code(201).send(user);
+      return reply.code(created ? 201 : 200).send(user);
     }
   );
 
   // Get user by username
-  fastify.get<{ Params: { username: string } }>('/users/:username', async (request, reply) => {
-    const { username } = request.params;
+  fastify.get<{ Params: { username: string } }>(
+    '/users/:username',
+    {
+      schema: {
+        tags: ['users'],
+        summary: 'Get user by username',
+        description: 'Retrieve user profile with message and reaction counts'
+      }
+    },
+    async (request, reply) => {
+      const { username } = request.params;
 
-    const user = await fastify.prisma.user.findUnique({
-      where: { username },
-      include: {
-        _count: {
-          select: {
-            messages: true,
-            reactions: true,
-          },
-        },
-      },
-    });
+      const user = await fastify.userService.getUserByUsername(username);
 
-    if (!user) {
-      return reply.code(404).send({ error: 'User not found' });
+      if (!user) {
+        return reply.code(404).send({ error: 'User not found' });
+      }
+
+      return user;
     }
-
-    return user;
-  });
+  );
 
   // Update user
   fastify.patch<{ Params: { id: string }; Body: { avatar?: string; walletAddress?: string } }>(
     '/users/:id',
+    {
+      schema: {
+        tags: ['users'],
+        summary: 'Update user profile',
+        description: 'Update user avatar or wallet address'
+      }
+    },
     async (request) => {
       const { id } = request.params;
       const { avatar, walletAddress } = request.body;
 
-      const user = await fastify.prisma.user.update({
-        where: { id },
-        data: {
-          ...(avatar !== undefined && { avatar: avatar ?? null }),
-          ...(walletAddress !== undefined && { walletAddress: walletAddress ?? null }),
-        },
+      const user = await fastify.userService.updateUser(id, {
+        avatar,
+        walletAddress,
       });
 
       return user;

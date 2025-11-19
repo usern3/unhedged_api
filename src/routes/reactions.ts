@@ -4,6 +4,13 @@ const reactionsRoutes: FastifyPluginAsync = async (fastify) => {
   // Add reaction to message
   fastify.post<{ Body: { emoji: string; messageId: string; userId: string } }>(
     '/reactions',
+    {
+      schema: {
+        tags: ['reactions'],
+        summary: 'Add reaction to message',
+        description: 'React to a message with an emoji'
+      }
+    },
     async (request, reply) => {
       const { emoji, messageId, userId } = request.body;
 
@@ -50,6 +57,13 @@ const reactionsRoutes: FastifyPluginAsync = async (fastify) => {
   // Remove reaction
   fastify.delete<{ Params: { id: string }; Body: { userId: string } }>(
     '/reactions/:id',
+    {
+      schema: {
+        tags: ['reactions'],
+        summary: 'Remove reaction',
+        description: 'Delete a reaction from a message (author only)'
+      }
+    },
     async (request, reply) => {
       const { id } = request.params;
       const { userId } = request.body;
@@ -77,6 +91,13 @@ const reactionsRoutes: FastifyPluginAsync = async (fastify) => {
   // Get reactions for a message
   fastify.get<{ Params: { messageId: string } }>(
     '/messages/:messageId/reactions',
+    {
+      schema: {
+        tags: ['reactions'],
+        summary: 'Get message reactions',
+        description: 'Retrieve all reactions for a specific message, grouped by emoji'
+      }
+    },
     async (request) => {
       const { messageId } = request.params;
 

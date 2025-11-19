@@ -1,7 +1,6 @@
 {
   "compilerOptions": {
     // File Layout
-    "rootDir": "./src",
     "outDir": "./dist",
 
     // Environment Settings
@@ -12,6 +11,12 @@
     "esModuleInterop": true,
     "moduleResolution": "node",
 
+    // Path Mapping
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+
     // Other Outputs
     "sourceMap": true,
     "declaration": true,
@@ -21,8 +26,6 @@
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
     "noImplicitReturns": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
 
     // Recommended Options
@@ -32,6 +35,6 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "tests/**/*"],
   "exclude": ["node_modules", "dist"]
 }

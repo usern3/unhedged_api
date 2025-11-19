@@ -10,17 +10,29 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Crypto Trollbox/Chatbox models
+// Unified User model (Chatbox + Markets)
 model User {
-  id        String    @id @default(cuid())
-  username  String    @unique
-  walletAddress String? @unique
-  avatar    String?
-  messages  Message[]
-  reactions Reaction[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id            String     @id @default(cuid())
+  username      String     @unique
+  walletAddress String?    @unique
+  avatar        String?
+  messages      Message[]
+  reactions     Reaction[]
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
 
+  // Market trading fields
+  partyId       String?   @unique @map("party_id")
+  displayName   String?   @map("display_name")
+  email         String?
+  totalBets     Int       @default(0) @map("total_bets")
+  totalWinnings Decimal   @default(0) @map("total_winnings") @db.Decimal(20, 10)
+  totalStaked   Decimal   @default(0) @map("total_staked") @db.Decimal(20, 10)
+  winCount      Int       @default(0) @map("win_count")
+  lossCount     Int       @default(0) @map("loss_count")
+  lastSeen      DateTime? @map("last_seen")
+
+  @@index([lastSeen(sort: Desc)])
   @@map("users")
 }
 
@@ -49,4 +61,82 @@ model Reaction {
 
   @@unique([messageId, userId, emoji])
   @@map("reactions")
+}
+
+// Prediction Markets models
+model Market {
+  id             Int      @id @default(autoincrement())
+  contractId     String   @unique @map("contract_id")
+  marketId       String   @unique @map("market_id")
+  question       String
+  description    String?
+  category       String
+  outcomes       Json
+  totalPool      Decimal  @default(0) @map("total_pool") @db.Decimal(20, 10)
+  status         String // 'active', 'resolved', 'cancelled'
+  winningOutcome Int?     @map("winning_outcome")
+  endTime        DateTime @map("end_time")
+  resolutionTime DateTime @map("resolution_time")
+  createdAt      DateTime @map("created_at")
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at")
+
+  // Market metadata
+  tokenStandard        String   @map("token_standard") // 'splice-cc', 'cip-56'
+  minimumBet           Decimal? @map("minimum_bet") @db.Decimal(20, 10)
+  maximumBet           Decimal? @map("maximum_bet") @db.Decimal(20, 10)
+  feeRate              Decimal? @map("fee_rate") @db.Decimal(5, 4)
+  timeWeightingEnabled Boolean  @default(false) @map("time_weighting_enabled")
+
+  bets   Bet[]
+  claims Claim[]
+
+  @@index([status])
+  @@index([category])
+  @@index([createdAt(sort: Desc)])
+  @@index([endTime])
+  @@map("markets")
+}
+
+model Bet {
+  id            Int      @id @default(autoincrement())
+  marketId      String   @map("market_id")
+  market        Market   @relation(fields: [marketId], references: [marketId])
+  bettor        String
+  amount        Decimal  @db.Decimal(20, 10)
+  outcomeIndex  Int      @map("outcome_index")
+  betTimestamp  DateTime @map("bet_timestamp")
+  transactionId String?  @map("transaction_id")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([marketId])
+  @@index([bettor])
+  @@index([createdAt(sort: Desc)])
+  @@map("bets")
+}
+
+model Claim {
+  id        Int       @id @default(autoincrement())
+  claimId   String    @unique @map("claim_id")
+  marketId  String    @map("market_id")
+  market    Market    @relation(fields: [marketId], references: [marketId])
+  claimer   String
+  amount    Decimal   @db.Decimal(20, 10)
+  status    String // 'pending', 'completed', 'failed'
+  createdAt DateTime  @map("created_at")
+  claimedAt DateTime? @map("claimed_at")
+
+  @@index([claimer])
+  @@index([status])
+  @@index([marketId])
+  @@map("claims")
+}
+
+model IndexerCheckpoint {
+  id          Int      @id @default(autoincrement())
+  serviceName String   @unique @map("service_name")
+  lastOffset  String   @map("last_offset")
+  lastEventId String?  @map("last_event_id")
+  lastUpdated DateTime @default(now()) @updatedAt @map("last_updated")
+
+  @@map("indexer_checkpoints")
 }

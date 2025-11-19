@@ -1,16 +1,23 @@
 {
-  "name": "@windoge98/unhedged_api",
+  "name": "unhedged_api",
   "version": "1.0.0",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "tsx watch src/index.ts",
+    "dev:indexer": "tsx watch src/indexer/start-indexer.ts",
     "start": "node dist/index.js",
+    "start:indexer": "node dist/indexer/start-indexer.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "vitest",
+    "test:unit": "vitest run tests/unit",
+    "test:integration": "vitest run tests/integration",
+    "test:e2e": "vitest run tests/e2e",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest"
   },
   "keywords": [
     "fastify",
@@ -22,19 +29,29 @@
   "license": "ISC",
   "description": "Fastify API with Prisma and TypeScript",
   "dependencies": {
+    "@fastify/rate-limit": "^10.3.0",
+    "@fastify/swagger": "^9.6.1",
+    "@fastify/swagger-ui": "^5.2.3",
     "@fastify/websocket": "^11.2.0",
     "@joggr/fastify-prisma": "^6.0.1",
     "@prisma/client": "^6.19.0",
+    "axios": "^1.7.0",
     "dotenv": "^17.2.3",
     "fastify": "^5.6.2",
     "fastify-plugin": "^5.1.0",
+    "ioredis": "^5.8.2",
     "ws": "^8.18.3"
   },
   "devDependencies": {
+    "@faker-js/faker": "^9.9.0",
+    "@types/ioredis": "^4.28.10",
     "@types/node": "^24.10.1",
+    "@vitest/coverage-v8": "^4.0.10",
     "pino-pretty": "^13.1.2",
     "prisma": "^6.19.0",
     "tsx": "^4.20.6",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.10",
+    "vitest-mock-extended": "^3.1.0"
   }
 }

@@ -4,6 +4,13 @@ const messagesRoutes: FastifyPluginAsync = async (fastify) => {
   // Get recent messages (paginated)
   fastify.get<{ Querystring: { limit?: string; before?: string } }>(
     '/messages',
+    {
+      schema: {
+        tags: ['messages'],
+        summary: 'Get recent messages',
+        description: 'Retrieve paginated trollbox messages with user and reaction data'
+      }
+    },
     async (request) => {
       const limit = parseInt(request.query.limit || '50', 10);
       const before = request.query.before;
@@ -47,7 +54,16 @@ const messagesRoutes: FastifyPluginAsync = async (fastify) => {
   );
 
   // Get single message
-  fastify.get<{ Params: { id: string } }>('/messages/:id', async (request, reply) => {
+  fastify.get<{ Params: { id: string } }>(
+    '/messages/:id',
+    {
+      schema: {
+        tags: ['messages'],
+        summary: 'Get message by ID',
+        description: 'Retrieve a single message with user and reaction data'
+      }
+    },
+    async (request, reply) => {
     const { id } = request.params;
 
     const message = await fastify.prisma.message.findUnique({
@@ -84,6 +100,13 @@ const messagesRoutes: FastifyPluginAsync = async (fastify) => {
   // Post message
   fastify.post<{ Body: { content: string; userId: string } }>(
     '/messages',
+    {
+      schema: {
+        tags: ['messages'],
+        summary: 'Post a new message',
+        description: 'Create a new trollbox message (max 1000 characters)'
+      }
+    },
     async (request, reply) => {
       const { content, userId } = request.body;
 
@@ -121,6 +144,13 @@ const messagesRoutes: FastifyPluginAsync = async (fastify) => {
   // Edit message
   fastify.patch<{ Params: { id: string }; Body: { content: string; userId: string } }>(
     '/messages/:id',
+    {
+      schema: {
+        tags: ['messages'],
+        summary: 'Edit a message',
+        description: 'Update message content (author only)'
+      }
+    },
     async (request, reply) => {
       const { id } = request.params;
       const { content, userId } = request.body;
@@ -182,6 +212,13 @@ const messagesRoutes: FastifyPluginAsync = async (fastify) => {
   // Delete message
   fastify.delete<{ Params: { id: string }; Body: { userId: string } }>(
     '/messages/:id',
+    {
+      schema: {
+        tags: ['messages'],
+        summary: 'Delete a message',
+        description: 'Remove a message (author only)'
+      }
+    },
     async (request, reply) => {
       const { id } = request.params;
       const { userId } = request.body;

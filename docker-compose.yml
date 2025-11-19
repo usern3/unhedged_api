@@ -1,0 +1,148 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: unhedged-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: unhedged
+      POSTGRES_PASSWORD: unhedged_dev_password
+      POSTGRES_DB: unhedged
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U unhedged"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - unhedged-network
+
+  # Redis Cache (optional but recommended)
+  redis:
+    image: redis:7-alpine
+    container_name: unhedged-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - unhedged-network
+
+  # API Server
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: unhedged-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      # Database
+      DATABASE_URL: postgresql://unhedged:unhedged_dev_password@postgres:5432/unhedged?schema=public
+
+      # Canton Configuration
+      CANTON_JSON_API_URL: ${CANTON_JSON_API_URL:-https://api.validator.devnet.sandbox.fivenorth.io/api/json-api}
+      CANTON_LEDGER_ID: ${CANTON_LEDGER_ID:-5nsandbox-devnet-1}
+      CANTON_APPLICATION_ID: ${CANTON_APPLICATION_ID:-unhedged-prediction-markets-backend}
+      ADMIN_M2M_TOKEN: ${ADMIN_M2M_TOKEN}
+      PLATFORM_ADMIN_PARTY: ${PLATFORM_ADMIN_PARTY}
+      PACKAGE_ID: ${PACKAGE_ID:-d1bae0fa683dcd95581eb576320a4d945ee6b680e711561b53cbd0f1c627537d}
+
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+      REDIS_ENABLED: "true"
+
+      # Rate Limiting
+      RATE_LIMIT_MAX_REQUESTS: ${RATE_LIMIT_MAX_REQUESTS:-1000}
+      RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS:-60000}
+
+      # Server
+      PORT: 3000
+      HOST: 0.0.0.0
+      NODE_ENV: development
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./src:/app/src:ro
+      - ./prisma:/app/prisma:ro
+      - ./package.json:/app/package.json:ro
+      - ./package-lock.json:/app/package-lock.json:ro
+      - ./tsconfig.json:/app/tsconfig.json:ro
+      - node_modules:/app/node_modules
+    command: npm run dev
+    networks:
+      - unhedged-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Market Indexer Service
+  indexer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: unhedged-indexer
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_started
+    environment:
+      # Database
+      DATABASE_URL: postgresql://unhedged:unhedged_dev_password@postgres:5432/unhedged?schema=public
+
+      # Canton Configuration
+      CANTON_JSON_API_URL: ${CANTON_JSON_API_URL:-https://api.validator.devnet.sandbox.fivenorth.io/api/json-api}
+      CANTON_LEDGER_ID: ${CANTON_LEDGER_ID:-5nsandbox-devnet-1}
+      CANTON_APPLICATION_ID: ${CANTON_APPLICATION_ID:-unhedged-indexer}
+      ADMIN_M2M_TOKEN: ${ADMIN_M2M_TOKEN}
+      PLATFORM_ADMIN_PARTY: ${PLATFORM_ADMIN_PARTY}
+      PACKAGE_ID: ${PACKAGE_ID:-d1bae0fa683dcd95581eb576320a4d945ee6b680e711561b53cbd0f1c627537d}
+
+      # Server
+      NODE_ENV: development
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    volumes:
+      - ./src:/app/src:ro
+      - ./prisma:/app/prisma:ro
+      - ./package.json:/app/package.json:ro
+      - ./package-lock.json:/app/package-lock.json:ro
+      - ./tsconfig.json:/app/tsconfig.json:ro
+      - node_modules:/app/node_modules
+    command: npm run dev:indexer
+    networks:
+      - unhedged-network
+
+networks:
+  unhedged-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  node_modules:

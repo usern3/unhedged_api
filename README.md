@@ -1,25 +1,54 @@
-# Unhedged API - Crypto Trollbox
+# Unhedged API - Prediction Markets Platform
 
-A production-ready crypto trollbox/chatbox API built with Fastify, Prisma, TypeScript, and WebSockets.
+A production-ready prediction markets platform with Canton blockchain integration, event indexing (CQRS), and real-time community chat features. Built with Fastify, Prisma, TypeScript, and PostgreSQL.
+
+## 🏗️ Architecture
+
+```
+Canton Ledger (Write) → Event Indexer → PostgreSQL (Read) → Fastify API
+                                                           → WebSocket Chat
+```
+
+**CQRS Pattern:**
+- **Canton Ledger** - Source of truth for prediction markets
+- **Event Indexer** - Syncs Canton events to PostgreSQL
+- **PostgreSQL** - Optimized read model (1-5ms queries vs 500-2000ms Canton queries)
+- **Fastify API** - High-performance REST + WebSocket endpoints
 
 ## 🚀 Features
 
+### Prediction Markets
+- **Canton Integration** - On-chain prediction markets with Daml smart contracts
+- **Event Indexing** - Real-time sync from Canton to PostgreSQL with checkpoint recovery
+- **Market Management** - Create, resolve, and monitor prediction markets
+- **Betting System** - Place bets with multiple token standards (splice-cc, cip-56)
+- **Claims Processing** - Automated winning claim distribution
+- **Analytics** - Comprehensive market statistics and monitoring
+- **Performance** - Sub-5ms queries with Redis caching
+
+### Community Chat
 - **Real-time Chat** - WebSocket support for instant message delivery
+- **Message Reactions** - Emoji reactions with user tracking
+- **User Profiles** - Wallet integration and user statistics
+- **Pagination** - Efficient message loading with cursor-based pagination
+
+### Technical Features
 - **Fastify** - High-performance web framework
-- **Prisma** - Next-generation ORM with type-safe database access
+- **Prisma** - Type-safe ORM with auto-generated types
 - **TypeScript** - Full type safety across the stack
 - **PostgreSQL** - Robust relational database
-- **Message Reactions** - Emoji reactions with user tracking
-- **Wallet Integration** - Support for crypto wallet addresses
-- **Pagination** - Efficient message loading with cursor-based pagination
-- **Auto-generated Types** - Prisma generates TypeScript types from your schema
-- **Graceful Shutdown** - Proper cleanup of database connections
-- **Development Logger** - Pretty-printed logs with pino-pretty
+- **Redis** - Optional caching layer with graceful degradation
+- **Rate Limiting** - Per-route request throttling
+- **WebSockets** - Real-time bidirectional communication
+- **Swagger/OpenAPI** - Interactive API documentation with schema validation
+- **Graceful Shutdown** - Proper cleanup of connections
 
 ## 📋 Prerequisites
 
 - Node.js 18+
 - PostgreSQL database
+- Canton node access (for markets functionality)
+- Redis (optional, for caching)
 - npm or yarn
 
 ## 🛠️ Installation
@@ -40,9 +69,35 @@ npm install
 cp .env.example .env
 ```
 
-Edit `.env` and configure your database connection:
+Edit `.env` and configure your database and Canton connection:
+
 ```env
-DATABASE_URL="postgresql://user:password@localhost:5432/mydb?schema=public"
+# Database
+DATABASE_URL="postgresql://user:password@localhost:5432/unhedged?schema=public"
+
+# Canton Configuration
+CANTON_JSON_API_URL="https://your-canton-node.com/api"
+CANTON_LEDGER_ID="canton-network"
+CANTON_APPLICATION_ID="unhedged-indexer"
+ADMIN_M2M_TOKEN="your-canton-admin-token"
+PLATFORM_ADMIN_PARTY="admin::1220xxxxxxxxxxxx"
+PACKAGE_ID="your-daml-package-id"
+
+# Redis Cache (Optional)
+REDIS_HOST="localhost"
+REDIS_PORT="6379"
+REDIS_PASSWORD=""
+REDIS_ENABLED="true"
+
+# Rate Limiting
+RATE_LIMIT_MAX_REQUESTS="1000"
+RATE_LIMIT_WINDOW_MS="60000"
+
+# Server
+PORT="3000"
+HOST="0.0.0.0"
+NODE_ENV="development"
+LOG_LEVEL="info"
 ```
 
 4. Generate Prisma Client:
@@ -58,151 +113,100 @@ npm run prisma:migrate
 ## 🏃 Running the Application
 
 ### Development Mode
+
+**API Server:**
 ```bash
 npm run dev
 ```
 
-The server will start on `http://localhost:3000` with hot-reload enabled.
+**Event Indexer:**
+```bash
+npm run dev:indexer
+```
+
+The API server will start on `http://localhost:3000` with hot-reload enabled.
+The indexer will continuously sync Canton events to PostgreSQL.
 
 ### Production Build
+
 ```bash
 npm run build
-npm start
+npm start              # Start API
+npm run start:indexer  # Start indexer (separate process)
 ```
 
 ## 📡 API Endpoints
 
-### Health Check
-- `GET /health` - Check server status
+### Interactive API Documentation
 
-### WebSocket
-- `WS /ws` - Real-time chat WebSocket connection
+**Swagger UI**: [http://localhost:3000/docs](http://localhost:3000/docs)
 
-### Users
-- `POST /api/users` - Create or get user (returns existing user if username exists)
-- `GET /api/users/:username` - Get user by username with message/reaction counts
-- `PATCH /api/users/:id` - Update user avatar or wallet address
+Full OpenAPI 3.0 specification with interactive request/response testing, schema validation, and detailed endpoint documentation.
 
-### Messages
-- `GET /api/messages?limit=50&before=<timestamp>` - Get recent messages (paginated)
-- `GET /api/messages/:id` - Get single message with reactions
-- `POST /api/messages` - Post new message
-- `PATCH /api/messages/:id` - Edit message (requires userId authorization)
-- `DELETE /api/messages/:id` - Delete message (requires userId authorization)
+### Endpoint Overview
 
-### Reactions
-- `POST /api/reactions` - Add emoji reaction to message
-- `DELETE /api/reactions/:id` - Remove reaction (requires userId authorization)
-- `GET /api/messages/:messageId/reactions` - Get all reactions for a message (grouped by emoji)
+- **Markets**: `/api/markets` - List, filter, and get market details/stats
+- **Analytics**: `/api/analytics` - Market and platform analytics
+- **Chat**: `/ws` (WebSocket), `/api/messages`, `/api/reactions`
+- **Users**: `/api/users` - Create and manage user profiles
+- **Health**: `/health` - Server status check
 
-## 📝 Example Requests
+### API Documentation Features
 
-### Create User
-```bash
-curl -X POST http://localhost:3000/api/users \
-  -H "Content-Type: application/json" \
-  -d '{"username":"cryptotrader","walletAddress":"0x1234...","avatar":"https://..."}'
-```
-
-### Post Message
-```bash
-curl -X POST http://localhost:3000/api/messages \
-  -H "Content-Type: application/json" \
-  -d '{"content":"To the moon! 🚀","userId":"<user-id>"}'
-```
-
-### Get Messages (Paginated)
-```bash
-# Get latest 50 messages
-curl http://localhost:3000/api/messages?limit=50
-
-# Get messages before a specific timestamp
-curl http://localhost:3000/api/messages?limit=50&before=2024-01-15T10:30:00Z
-```
-
-### Add Reaction
-```bash
-curl -X POST http://localhost:3000/api/reactions \
-  -H "Content-Type: application/json" \
-  -d '{"emoji":"🚀","messageId":"<message-id>","userId":"<user-id>"}'
-```
-
-### WebSocket Connection (JavaScript)
-```javascript
-const ws = new WebSocket('ws://localhost:3000/ws');
-
-ws.onopen = () => {
-  console.log('Connected to trollbox');
-};
-
-ws.onmessage = (event) => {
-  const data = JSON.parse(event.data);
-
-  switch(data.type) {
-    case 'connected':
-      console.log('Welcome:', data.message);
-      break;
-    case 'new_message':
-      console.log('New message:', data.data);
-      break;
-    case 'new_reaction':
-      console.log('New reaction:', data.data);
-      break;
-  }
-};
-
-// Send ping to keep connection alive
-setInterval(() => {
-  ws.send(JSON.stringify({ type: 'ping' }));
-}, 30000);
-```
+- **Interactive Testing** - Try API calls directly from the browser
+- **Request/Response Schemas** - Complete JSON schema definitions
+- **Authentication** - Security requirements and token formats
+- **Error Codes** - Detailed error response documentation
+- **Rate Limits** - Per-endpoint rate limiting information
 
 ## 🗄️ Database Schema
 
-The application includes three models:
+**Core Models**: User, Message, Reaction, Market, Bet, Claim, IndexerCheckpoint
 
-- **User**: id, username, walletAddress, avatar, messages, reactions, createdAt, updatedAt
-- **Message**: id, content, userId, user, reactions, isEdited, createdAt, updatedAt
-- **Reaction**: id, emoji, messageId, userId, user, message, createdAt
+See `prisma/schema.prisma` for complete schema definitions.
+
+## 🔄 Canton Event Indexer
+
+The indexer syncs Canton ledger events to PostgreSQL with checkpoint-based crash recovery and automatic retry. Runs as a separate process from the API.
+
+See `INDEXER_SETUP.md` for setup and monitoring details.
 
 ## 🔧 Available Scripts
 
-- `npm run dev` - Start development server with hot-reload
+- `npm run dev` - Start API server with hot-reload
+- `npm run dev:indexer` - Start event indexer with hot-reload
 - `npm run build` - Build for production
-- `npm start` - Start production server
+- `npm start` - Start production API server
+- `npm run start:indexer` - Start production indexer
 - `npm run prisma:generate` - Generate Prisma Client
 - `npm run prisma:migrate` - Run database migrations
 - `npm run prisma:studio` - Open Prisma Studio (database GUI)
 
 ## 🏗️ Project Structure
 
-```
-unhedged_api/
-├── src/
-│   ├── index.ts              # Server entry point
-│   ├── plugins/
-│   │   ├── prisma.ts         # Prisma plugin
-│   │   └── websocket.ts      # WebSocket plugin
-│   ├── routes/
-│   │   ├── users.ts          # User endpoints
-│   │   ├── messages.ts       # Message endpoints
-│   │   └── reactions.ts      # Reaction endpoints
-│   └── types/
-│       └── fastify.d.ts      # Type declarations
-├── prisma/
-│   └── schema.prisma         # Database schema
-├── .env                      # Environment variables
-├── tsconfig.json             # TypeScript config
-└── package.json              # Dependencies
+```text
+src/
+├── index.ts           # API server
+├── indexer/           # Canton event indexer
+├── plugins/           # Fastify plugins
+├── routes/            # API endpoints
+├── services/          # Business logic
+└── types/             # TypeScript declarations
 ```
 
 ## 🔐 Environment Variables
 
-- `DATABASE_URL` - PostgreSQL connection string
-- `PORT` - Server port (default: 3000)
-- `HOST` - Server host (default: 0.0.0.0)
-- `NODE_ENV` - Environment (development/production)
-- `LOG_LEVEL` - Logging level (default: info)
+**Required**: `DATABASE_URL`, Canton config (`CANTON_JSON_API_URL`, `ADMIN_M2M_TOKEN`, `PLATFORM_ADMIN_PARTY`, `PACKAGE_ID`)
+
+**Optional**: Redis (`REDIS_HOST`, `REDIS_PORT`), Rate limiting, Server config
+
+See `.env.example` for complete list with descriptions.
+
+## 🚀 Deployment
+
+Requires two processes: **API Server** + **Event Indexer**
+
+Supports Docker Compose, PM2, or systemd. See `INDEXER_SETUP.md` for detailed deployment configurations.
 
 ## 🧪 Development Tips
 
@@ -210,13 +214,28 @@ unhedged_api/
 2. **Schema Changes**: After modifying `schema.prisma`, run `npm run prisma:migrate` and `npm run prisma:generate`
 3. **Type Safety**: TypeScript and Prisma provide end-to-end type safety
 4. **Auto-completion**: Your IDE will provide full autocomplete for database queries
+5. **Monitor Indexer**: Check `indexer_checkpoints` table for sync status
+6. **Performance**: Use Redis caching for production deployments
+7. **API Documentation**: Access interactive docs at `/docs` - automatically updates as you add route schemas
+
+## ⚡ Performance
+
+- **API Queries**: 1-5ms with PostgreSQL (vs 500-2000ms Canton queries)
+- **Caching**: 30-60s TTL for market data
+- **Rate Limiting**: 1000 req/min per endpoint (configurable)
+- **WebSocket**: Real-time updates with minimal latency
 
 ## 📚 Tech Stack Documentation
 
 - [Fastify](https://fastify.dev/) - Web framework
+- [@fastify/swagger](https://github.com/fastify/fastify-swagger) - OpenAPI schema generation
+- [@fastify/swagger-ui](https://github.com/fastify/fastify-swagger-ui) - Interactive API documentation
 - [Prisma](https://www.prisma.io/) - ORM
 - [TypeScript](https://www.typescriptlang.org/) - Language
 - [PostgreSQL](https://www.postgresql.org/) - Database
+- [Canton](https://docs.daml.com/canton/) - Blockchain ledger
+- [Daml](https://docs.daml.com/) - Smart contract language
+- [Redis](https://redis.io/) - Caching layer
 
 ## 🤝 Contributing
 
