@@ -14,6 +14,7 @@ import messagesRoutes from './routes/messages';
 import reactionsRoutes from './routes/reactions';
 import marketsRoutes from './routes/markets';
 import analyticsRoutes from './routes/analytics';
+import healthRoutes from './routes/health';
 
 const fastify = Fastify({
   logger:
@@ -90,31 +91,12 @@ async function start() {
     await fastify.register(websocketPlugin);
 
     // Register routes
+    await fastify.register(healthRoutes);
     await fastify.register(usersRoutes);
     await fastify.register(messagesRoutes);
     await fastify.register(reactionsRoutes);
     await fastify.register(marketsRoutes);
     await fastify.register(analyticsRoutes);
-
-    // Health check endpoint
-    fastify.get('/health', {
-      schema: {
-        tags: ['health'],
-        description: 'API health check',
-        summary: 'Check if the API is running',
-        response: {
-          200: {
-            type: 'object',
-            properties: {
-              status: { type: 'string' },
-              timestamp: { type: 'string', format: 'date-time' }
-            }
-          }
-        }
-      }
-    }, async () => {
-      return { status: 'ok', timestamp: new Date().toISOString() };
-    });
 
     // Start server
     const port = parseInt(process.env.PORT || '3000', 10);
